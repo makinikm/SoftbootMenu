@@ -26,8 +26,7 @@ class SoftbootApplet extends Applet.TextIconApplet {
     _getKernelImages() {
         let kernels = [];
         try {
-            let [ok, out, err, exit] = GLib.spawn_command_line_sync("ls /boot/vmlinuz-*"
-);
+            let [ok, out, err, exit] = GLib.spawn_command_line_sync("ls /boot/vmlinuz-*");
             if (ok && out) {
                 let files = out.toString().trim().split('\n');
                 for (let file of files) {
@@ -57,7 +56,7 @@ class SoftbootApplet extends Applet.TextIconApplet {
         for (let kernel of kernels) {
             let menuItem = new PopupMenu.PopupMenuItem(kernel.name);
             menuItem.connect('activate', () => {
-                this._promptSoftboot(kernel);
+                this._runCommandAndLog(kernel);
             });
             this.menu.addMenuItem(menuItem);
         }
@@ -66,14 +65,18 @@ class SoftbootApplet extends Applet.TextIconApplet {
         }
     }
 
-    // Prompt for password and run softboot command
-    _promptSoftboot(kernel) {
+    // Run softboot command and log the output
+    _runCommandAndLog(kernel) {
         let initrd = `/boot/initrd.img-${kernel.version}`;
-        let cmd = `pkexec bash -c \"kexec -l ${kernel.path} --initrd=${initrd} --reuse-cmdline && systemctl kexec\"`;
+        let cmd = `pkexec bash -c "kexec -l ${kernel.path} --initrd=${initrd} --reuse-cmdline && systemctl kexec"`;
 
-        // Show a GTK dialog and run command (see mintinstall/mintupdate for reference)
-        Util.spawnCommandLine(cmd);
-        // TODO: capture output and show in a message window
+        try {
+            let [ok, out, err, exit] = GLib.spawn_command_line_sync(cmd);
+            let output = out ? out.toString() : "";
+            global.log(`[SoftbootMenu] Command output: ${output}`);
+        } catch (e) {
+            global.logError(`[SoftbootMenu] Command error: ${e}`);
+        }
     }
 
     on_applet_clicked(event) {
