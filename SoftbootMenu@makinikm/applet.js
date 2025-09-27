@@ -64,21 +64,15 @@ class SoftbootApplet extends Applet.TextIconApplet {
             this.menu.addMenuItem(new PopupMenu.PopupMenuItem(_("No kernel images found."), {reactive: false}));
         }
     }
-
-    // Run softboot command and log the output
+    
+    // Run the kexec commands and log it
     _runCommandAndLog(kernel) {
-        let initrd = `/boot/initrd.img-${kernel.version}`;
-        let cmd = `pkexec bash -c "kexec -l ${kernel.path} --initrd=${initrd} --reuse-cmdline && systemctl kexec"`;
+    let initrd = `/boot/initrd.img-${kernel.version}`;
+    let cmd = `pkexec bash -c "kexec -l ${kernel.path} --initrd=${initrd} --reuse-cmdline && systemctl kexec"`;
 
-        try {
-            let [ok, out, err, exit] = GLib.spawn_command_line_sync(cmd);
-            let output = out ? out.toString() : "";
-            global.log(`[SoftbootMenu] Command output: ${output}`);
-        } catch (e) {
-            global.logError(`[SoftbootMenu] Command error: ${e}`);
-        }
-    }
-
+    Util.spawnCommandLineAsync(cmd); // Non-blocking!
+    global.log(`[SoftbootMenu] Command executed asynchronously: ${cmd}`);
+}
     on_applet_clicked(event) {
         this.menu.toggle();
     }
