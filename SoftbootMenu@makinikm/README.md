@@ -3,7 +3,7 @@
 A Cinnamon panel applet for soft-rebooting into a selected kernel image using kexec.
 
 ## Features
-- Tray icon opens a menu of available kernel images
+- Tray icon opens a menu of installed kernel images
 - Selecting the image prompts for admin credentials before executing (pkexec)
 - Execution logged
 - Newly installed kernel is marked as default (TODO)
