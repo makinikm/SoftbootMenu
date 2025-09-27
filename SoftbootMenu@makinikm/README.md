@@ -5,14 +5,14 @@ A Cinnamon panel applet for soft-rebooting into a selected kernel image using ke
 ## Features
 - Tray icon opens a menu of available kernel images
 - Selecting the image prompts for admin credentials before executing (pkexec)
-- Commands' output logged
-- Newly installed kernel is marked as default
+- Execution logged
+- Newly installed kernel is marked as default (TODO)
 
 ## Requirements
 - `kexec-tools`, `systemd`, `pkexec`
 - Kernel images in `/boot`
 
-## Installation (manual)
+## Installation (manually)
 1. Checkout or copy the contents of `SoftbootMenu@makinikm/` to `~/.local/share/cinnamon/applets/softbootmenu@makinikm/`
 2. Enable the applet in Cinnamon panel settings
 
