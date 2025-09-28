@@ -7,7 +7,7 @@ const GLib = imports.gi.GLib;
 const Main = imports.ui.main;
 const Util = imports.misc.util;
 
-const ICON_PATH = imports.ui.appletManager.appletMeta['softboot@makinikm'].path + '/icons/icon.png';
+const ICON_PATH = imports.ui.appletManager.appletMeta['softboot@makinikm'].path + '/icons/icon.svg';
 
 // l10n/translation support
 const UUID = "softbootmenu@makinikm";
