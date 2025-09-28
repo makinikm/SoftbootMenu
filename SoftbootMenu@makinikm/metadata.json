@@ -1,11 +1,10 @@
 {
     "uuid": "softboot@makinikm",
     "name": "Softboot Menu",
-    "description": "Panel applet for soft-rebooting into selected kernel using kexec.",
+    "description": "Panel Menu applet for soft-rebooting into selected kernel using kexec.",
     "icon": "icon.png",
     "author": "makinikm",
-    "version": 1,
-    "cinnamon-version": ["5.0", "5.2", "6.0", "6.2"],
+    "version": "1.0",
     "show-in-panel": true,
-    "show-in-tray": false
+    "show-in-tray": true
 }

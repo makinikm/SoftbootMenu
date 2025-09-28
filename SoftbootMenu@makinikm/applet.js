@@ -1,3 +1,4 @@
+const Lang = imports.lang;
 const Applet = imports.ui.applet;
 const PopupMenu = imports.ui.popupMenu;
 const St = imports.gi.St;
@@ -7,6 +8,10 @@ const Main = imports.ui.main;
 const Util = imports.misc.util;
 
 const ICON_PATH = imports.ui.appletManager.appletMeta['softboot@makinikm'].path + '/icons/icon.png';
+
+// l10n/translation support
+const UUID = "softbootmenu@makinikm";
+Gettext.bindtextdomain(UUID, GLib.get_home_dir() + "/.local/share/locale");
 
 class SoftbootApplet extends Applet.TextIconApplet {
     constructor(metadata, orientation, panel_height, instance_id) {
