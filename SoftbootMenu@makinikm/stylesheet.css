@@ -1,5 +1,26 @@
 .softboot-menu {
     background-color: rgba(40, 40, 40, 0.8);
     border-radius: 8px;
-    /* Inherit theme, placeholder */
+}
+.menuButton:hover {
+    background-color: rgba(136, 136, 136, 0.521);
+}
+
+.popup-menu-item-title {
+    font-weight: bold;
+}
+
+.menuButton {
+    padding: 0;
+}
+
+.buttonBox {
+    padding: 10px;
+    margin: 0;
+    width: 500px;
+}
+
+.scrollView {
+    max-height: 400px;
+    width: 500px;
 }

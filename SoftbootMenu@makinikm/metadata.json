@@ -2,8 +2,12 @@
     "uuid": "softboot@makinikm",
     "name": "Softboot Menu",
     "description": "Panel Menu applet for soft-rebooting into selected kernel using kexec.",
-    "icon": "icon.png",
+    "comments": "This applet is a wrapper for 'kexec-tools' and 'systemctl kexec' commands, preserving the running kernel's boot arguments (--reuse-cmdline). The action of soft-booting a kernel via kexec could possibly leave your system unresponsive, potentially cause data corruption or render it unbootable. Not all hardware configurations and drivers support kexec boots, especially ones using some proprietary dkms modules (e.g. Nvidia, AMD). Highly advisable to test kexec functionality manually on your system before installing and using this Applet.",
+    "website": "https://github.com/makinikm/SoftbootMenu",
+    "contributors": "makini@",
+    "max-instances": -1,
     "author": "makinikm",
+    "icon": "icon.png",
     "version": "1.0",
     "show-in-panel": true,
     "show-in-tray": true
