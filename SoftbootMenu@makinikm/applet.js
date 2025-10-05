@@ -5,6 +5,10 @@ const Util = imports.misc.util;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 
+// l10n/translation support
+const UUID = "softbootmenu@makinikm";
+Gettext.bindtextdomain(UUID, GLib.get_home_dir() + "/.local/share/locale");
+
 function listKernels() {
     const bootDir = Gio.File.new_for_path("/boot");
     let kernels = [];
