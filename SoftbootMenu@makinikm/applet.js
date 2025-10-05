@@ -1,88 +1,113 @@
-const Lang = imports.lang;
 const Applet = imports.ui.applet;
 const PopupMenu = imports.ui.popupMenu;
-const St = imports.gi.St;
+const Mainloop = imports.mainloop;
+const Util = imports.misc.util;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
-const Main = imports.ui.main;
-const Util = imports.misc.util;
 
-const ICON_PATH = imports.ui.appletManager.appletMeta['softboot@makinikm'].path + '/icons/icon.svg';
+function listKernels() {
+    const bootDir = Gio.File.new_for_path("/boot");
+    let kernels = [];
 
-// l10n/translation support
-const UUID = "softbootmenu@makinikm";
-Gettext.bindtextdomain(UUID, GLib.get_home_dir() + "/.local/share/locale");
+    try {
+        const enumerator = bootDir.enumerate_children('standard::name,standard::type', Gio.FileQueryInfoFlags.NONE, null);
+        let info;
+        while ((info = enumerator.next_file(null)) !== null) {
+            const name = info.get_name();
+            if (name.startsWith("vmlinuz-")) {
+                kernels.push(name.replace("vmlinuz-", ""));
+            }
+        }
+        enumerator.close(null);
+    } catch (e) {
+        global.logError(`[SoftBootMenu] Failed to read /boot: ${e}`);
+    }
 
-class SoftbootApplet extends Applet.TextIconApplet {
-    constructor(metadata, orientation, panel_height, instance_id) {
-        super(orientation, panel_height, instance_id);
+    kernels.sort().reverse();
+    return kernels;
+}
 
-        this.set_applet_icon_path(ICON_PATH);
-        this.set_applet_tooltip(_("Softboot Menu"));
+function watchBootDirectory(callback) {
+    const bootDir = Gio.File.new_for_path("/boot");
+    const monitor = bootDir.monitor_directory(Gio.FileMonitorFlags.NONE, null);
+    monitor.connect('changed', () => callback());
+}
+
+class SoftBootMenuApplet extends Applet.IconApplet {
+    constructor(metadata, orientation, panelHeight, instanceId) {
+        super(orientation, panelHeight, instanceId);
+        this.set_applet_icon_symbolic_name("system-reboot-symbolic");
+        this.set_applet_tooltip("Soft-boot into installed kernels...");
 
         this.menuManager = new PopupMenu.PopupMenuManager(this);
-        this.menu = new PopupMenu.PopupMenu(this.actor, 0.0, St.Side.TOP);
+        this.menu = new Applet.AppletPopupMenu(this, orientation);
         this.menuManager.addMenu(this.menu);
 
+        this.currentKernel = "(Loading...)";
         this._populateMenu();
+
+        // Watch for /boot changes
+        watchBootDirectory(() => {
+            Mainloop.idle_add(() => this._populateMenu());
+        });
+
+        // Fetch current kernel asynchronously
+        this._updateCurrentKernelAsync();
     }
 
-    // Find installed kernel images
-    _getKernelImages() {
-        let kernels = [];
+    _updateCurrentKernelAsync() {
         try {
-            let [ok, out, err, exit] = GLib.spawn_command_line_sync("ls /boot/vmlinuz-*");
-            if (ok && out) {
-                let files = out.toString().trim().split('\n');
-                for (let file of files) {
-                    let name = file.split('/').pop();
-                    if (name.startsWith('vmlinuz-')) {
-                        kernels.push({
-                            path: file,
-                            name: name,
-                            version: name.replace('vmlinuz-', ''),
-                            isNew: false // placeholder, will mark new later
-                        });
-                    }
-                }
-            }
+            let [proc, out, err] = GLib.spawn_async_with_pipes(null, ["/bin/uname", "-r"], null, GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD ,null);
+            const output = new Gio.DataInputStream({
+                base_stream: new Gio.UnixInputStream({ fd: out, close_fd: true })
+            });
+
+            GLib.child_watch_add(GLib.PRIORITY_DEFAULT, proc, () => {
+                let [line] = output.read_line_utf8(null);
+                this.currentKernel = line ? line.trim() : "(unknown)";
+                this._populateMenu(); // refresh once result known
+                try { output.close(null); } catch (e) {}
+                try { GLib.spawn_close_pid(proc); } catch (e) {}
+            });
         } catch (e) {
-            global.logError("Softboot: Unable to list kernels: " + e);
+            global.logError(`[SoftBootMenu] Failed to get current kernel: ${e}`);
+            this.currentKernel = "(unknown)";
+            this._populateMenu();
         }
-        return kernels;
     }
 
-    // Populate menu with kernel images
     _populateMenu() {
         this.menu.removeAll();
 
-        let kernels = this._getKernelImages();
-        // TODO: Mark new kernel (e.g. compare with last booted kernel)
-        for (let kernel of kernels) {
-            let menuItem = new PopupMenu.PopupMenuItem(kernel.name);
-            menuItem.connect('activate', () => {
-                this._runCommandAndLog(kernel);
-            });
-            this.menu.addMenuItem(menuItem);
-        }
-        if (kernels.length === 0) {
-            this.menu.addMenuItem(new PopupMenu.PopupMenuItem(_("Kernel images not found."), {reactive: false}));
-        }
-    }
-    
-    // Run the kexec commands and log it
-    _runCommandAndLog(kernel) {
-    let initrd = `/boot/initrd.img-${kernel.version}`;
-    let cmd = `pkexec bash -c "kexec -l ${kernel.path} --initrd=${initrd} --reuse-cmdline && systemctl kexec"`;
+        const kernels = listKernels();
+        const current = this.currentKernel;
 
-    Util.spawnCommandLineAsync(cmd); // Non-blocking!
-    global.log(`[SoftbootMenu] Starting kexec soft-boot: ${cmd}`);
-}
+        if (kernels.length === 0) {
+            this.menu.addMenuItem(new PopupMenu.PopupMenuItem("(Kernels not found)", { reactive: false }));
+            return;
+        }
+
+        kernels.forEach(ver => {
+            const label = (ver === current) ? `${ver} (current)` : ver;
+            const item = new PopupMenu.PopupMenuItem(label);
+
+            if (ver !== current) {
+                item.connect("activate", () => {
+                    const cmd = `pkexec bash -c "kexec -l /boot/vmlinuz-${ver} --initrd=/boot/initrd.img-${ver} --reuse-cmdline && systemctl kexec"`;
+                    Util.spawnCommandLineAsync(cmd);
+                    global.log(`[SoftbootMenu] Starting kexec soft-boot: ${cmd}`);
+                });
+            }
+
+            this.menu.addMenuItem(item);
+        });
+    }
+
     on_applet_clicked(event) {
         this.menu.toggle();
     }
 }
 
-function main(metadata, orientation, panel_height, instance_id) {
-    return new SoftbootApplet(metadata, orientation, panel_height, instance_id);
+function main(metadata, orientation, panelHeight, instanceId) {
+    return new SoftBootMenuApplet(metadata, orientation, panelHeight, instanceId);
 }
